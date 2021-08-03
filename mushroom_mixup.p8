@@ -23,6 +23,7 @@ function _init()
 		sliding=false,
 		landed=false,
 	}
+
 	
 	gravity=0.3
 	friction=0.85
@@ -34,15 +35,14 @@ function _init()
 	map_start=0
 	map_end=1024
 	
-	mush={
-			red={	
-			sp=64,
+	mushs={}
+	local mush={sp=64,
 			x=8,
 			y=72,
 			w=2,
-			h=1,
-			flg=0
-		}}
+			h=1}
+	
+	add(mushs, mush)
 
 	
 	------------test--------
@@ -61,7 +61,9 @@ end
 function _update()
 	player_update()
 	player_animate()
+	check_mush_col()
 	
+
 	--simple camera
 	cam_x=player.x-64+player.w/2
 	if cam_x<map_start then
@@ -80,18 +82,28 @@ function _draw()
 	spr(player.sp,player.x,player.y,1,1,player.flp)
 	--------test------------
 	rect(x1r,y1r,x2r,y2r,7)
+
 	print("⬅️= "..collide_l,player.x,player.y-10)
 	print("➡️= "..collide_r,player.x,player.y-16)
 	print("⬆️= "..collide_u,player.x,player.y-22)
 	print("⬇️= "..collide_d,player.x,player.y-28)
-
-	print(mush.red.sp,player.x,player.y-35)
 	------------------------
 end
 
 function draw_mushrooms()
-	spr(mush.red.sp, mush.red.x,mush.red.y,
-					mush.red.w, mush.red.h)
+	for i in all(mushs) do
+			spr(i.sp, i.x,i.y,
+							i.w,i.h)
+	end
+end
+
+function check_mush_col()
+		for i in all(mushs) do
+				if check_collision(
+				player,"down",i) then
+						sfx(1)
+				end
+		end
 end
 -->8
 --collisions
@@ -138,6 +150,61 @@ function collide_map(obj,aim,flag)
 	else return false
 	end
 end
+
+
+--collisions
+function check_collision(obj,aim,obj2)
+	--obj=table needs x,y,w,h
+	local rect2={
+		x=obj2.x,
+		y=obj2.y,
+		w=obj2.w*8,
+		h=obj2.h
+	}
+	
+	local x=obj.x local y=obj.y
+	local w=obj.w local h=obj.h
+		
+	local x1=0 local y1=0
+	local x2=0 local y2=0
+
+	if aim=="left" then
+		x1=x-1 			y1=y
+		x2=x   			y2=y+h-1
+	
+	elseif aim=="right" then
+		x1=x+w-1 			y1=y
+		x2=x+w   			y2=y+h-1
+	
+	elseif aim=="up" then
+		x1=x+2				y1=y-1
+		x2=x+w-3		y2=y
+		
+	elseif aim=="down" then
+		x1=x+2						y1=y+h
+		x2=x+w-3				y2=y+h
+	end
+	
+	-----------test-----------
+	x1r=x1		y1r=y1
+	x2r=x2		y2r=y2
+	-----------------------------
+	
+	--pixels to tiles
+	x1/=8				y1/=8
+	x2/=8				y2/=8
+		
+	
+	if x<rect2.x+rect2.w and
+			x+w>rect2.x and
+			y<rect2.y+rect2.h and
+			y+h>rect2.y then
+					return true
+	else return false
+	end
+	
+
+end
 -->8
 --player
 
@@ -164,6 +231,7 @@ function player_update()
 		player.dx-=player.acc
 		player.running=true
 		player.flp=true
+
 	end
 	if btn(➡️) then
 		player.dx+=player.acc
@@ -287,6 +355,128 @@ function player_animate()
 				end
 		end
 end
+
+function player_update()
+	
+	if collide_map(player, "down",2) then
+	  --sand=flag 2
+	  friction=0.5
+	  player.boost=2
+	elseif collide_map(player,"down",3) then
+			--ice=flag 3
+			friction=0.95
+	else
+	--default
+	  friction=0.85
+	  player.boost=4
+	end  
+	--physics
+	player.dy+=gravity
+	player.dx*=friction
+	
+	--controls
+	if btn(⬅️) then
+		player.dx-=player.acc
+		player.running=true
+		player.flp=true
+	end
+	if btn(➡️) then
+		player.dx+=player.acc
+		player.running=true
+		player.flp=false
+	end
+	
+	--slide
+	if player.running
+	and not btn(⬅️)
+	and not btn(➡️)
+	and not player.falling
+	and not player.jumping then
+		player.running=false
+		player.sliding=true
+	end
+	
+	--jump
+	if btnp(❎)
+	and player.landed then
+		player.dy-=player.boost
+		player.landed=false
+	end
+	
+	
+	--check collision up and down
+	if player.dy>0 then
+			player.falling=true
+			player.landed=false
+			player.jumping=false
+			
+				
+			if collide_map(player,"down",0) then
+				player.landed=true
+				player.falling=false
+				player.dy=0
+				player.y-=((player.y+player.h+1)%8)-1
+				
+				------test---------
+				collide_d="yes"
+				else collide_d="no"
+				--------------------
+				
+			end
+	elseif player.dy<0 then
+			player.jumping=true
+			if collide_map(player,"up",1) then
+				player.dy=0
+				
+				------test---------
+				collide_u="yes"
+				else collide_u="no"
+				--------------------
+			end
+	end
+	
+	-- check collision left and right
+	if player.dx<0 then
+				if collide_map(player,"left",1) then
+							player.dx=0
+						------test---------
+						collide_l="yes"
+						else collide_l="no"
+						--------------------
+				end
+	elseif player.dx>0 then
+				if collide_map(player,"right",1) then
+							player.dx=0
+							
+							------test---------
+							collide_r="yes"
+							else collide_r="no"
+							--------------------
+				end
+	end
+	
+	
+	-- stop sliding
+	if player.sliding then
+				if abs(player.dx)<.2
+				or player.running then
+						player.dx=0
+						player.sliding=false
+				end
+	end
+	
+	player.x+=player.dx
+	player.y+=player.dy
+	
+	--limit player to map
+	if player.x<map_start then
+			player.x=map_start
+	end
+	if player.x>map_end-player.w then
+			player.x=map_end-player.w
+	end
+end
+
 -->8
 --mushroom variables
 function init_mushrooms()
@@ -385,3 +575,12 @@ __map__
 0050510050510050510050510050510000000050510050510050510050510050510000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7070707070707070707070707070707000007070707070707070707070707070707000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7070707070707070707070707070707000007070707070707070707070707070707000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__sfx__
+00010000152501525014250155501655017550175501855018550185501955019550195501a5501b550192501a2501c2501e25028050280501b050260502b0502c0502e050320500000000000000000000000000
+00010000360500e05000000050500d0500f0501105013050180501b0501e050200502105023050240502605021050350503d05028050280502905000000290502a0502a050000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__music__
+00 00424344
+
