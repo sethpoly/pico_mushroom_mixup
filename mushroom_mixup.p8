@@ -478,17 +478,8 @@ function player_update()
 end
 
 -->8
---mushroom variables
-function init_mushrooms()
-		red={
-			sp=64,
-			x=1,
-			y=9,
-			w=2,
-			h=1
-		}
-		add(mush, red)
-end
+--mushroom logic
+
 
 __gfx__
 0000000000444440004444400004444400044444000444440004444400044444b004444400000000000000000000000000000000000000000000000000000000
